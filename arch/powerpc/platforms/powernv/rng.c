@@ -35,7 +35,7 @@ static unsigned long rng_whiten(struct pnv_rng *rng, unsigned long val)
 
 	/* Calculate the parity of the value */
 	asm (".machine push;   \
-	      .machine power7; \
+	      .machine power8; \
 	      popcntd %0,%1;   \
 	      .machine pop;"
 	     : "=r" (parity) : "r" (val));
