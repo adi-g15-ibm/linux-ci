@@ -816,21 +816,6 @@ static int add_memory_block(unsigned long block_id, unsigned long state,
 	return 0;
 }
 
-static int __init add_boot_memory_block(unsigned long base_section_nr)
-{
-	unsigned long nr;
-
-	for_each_present_section_nr(base_section_nr, nr) {
-		if (nr >= (base_section_nr + sections_per_block))
-			break;
-
-		return add_memory_block(memory_block_id(base_section_nr),
-					MEM_ONLINE, NULL, NULL);
-	}
-
-	return 0;
-}
-
 static int add_hotplug_memory_block(unsigned long block_id,
 				    struct vmem_altmap *altmap,
 				    struct memory_group *group)
@@ -957,7 +942,7 @@ static const struct attribute_group *memory_root_attr_groups[] = {
 void __init memory_dev_init(void)
 {
 	int ret;
-	unsigned long block_sz, nr;
+	unsigned long block_sz, block_id, nr;
 
 	/* Validate the configured memory block size */
 	block_sz = memory_block_size_bytes();
@@ -973,12 +958,17 @@ void __init memory_dev_init(void)
 	 * Create entries for memory sections that were found
 	 * during boot and have been initialized
 	 */
-	for (nr = 0; nr <= __highest_present_section_nr;
-	     nr += sections_per_block) {
-		ret = add_boot_memory_block(nr);
-		if (ret)
-			panic("%s() failed to add memory block: %d\n", __func__,
-			      ret);
+	block_id = ULONG_MAX;
+	for_each_present_section_nr(0, nr) {
+		if (block_id != ULONG_MAX && memory_block_id(nr) == block_id)
+			continue;
+
+		block_id = memory_block_id(nr);
+		ret = add_memory_block(block_id, MEM_ONLINE, NULL, NULL);
+		if (ret) {
+			panic("%s() failed to add memory block: %d\n",
+			      __func__, ret);
+		}
 	}
 }
 
